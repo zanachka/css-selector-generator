@@ -6,14 +6,13 @@ import {
 } from "./test-utilities";
 import { assert } from "chai";
 import {
-  cssSelectorGenerator,
   getCommonParent,
   needleCandidateGenerator,
   parentsGenerator,
   testParentCandidate,
   viableParentsGenerator,
 } from "../src/utilities";
-import { CssSelectorType } from "../src/types.js";
+import { CSS_SELECTOR_TYPE } from "../src/types.js";
 import { sanitizeOptions } from "../src/utilities-options.js";
 
 describe("Utilities", () => {
@@ -128,7 +127,7 @@ describe("Utilities", () => {
       const generator = viableParentsGenerator(
         data.group.needle,
         ".aaa",
-        data.root
+        data.root,
       );
       const result = [...generator];
       assert.deepEqual(result, []);
@@ -165,7 +164,7 @@ describe("Utilities", () => {
       const generator = viableParentsGenerator(
         data.group.needle,
         ".aaa",
-        data.root
+        data.root,
       );
       const result = [...generator];
       assert.deepEqual(result, [data.element.parent]);
@@ -180,7 +179,7 @@ describe("Utilities", () => {
       const result = testParentCandidate(
         data.element.needle,
         ".xxx",
-        data.root
+        data.root,
       );
       assert.isFalse(result);
     });
@@ -192,7 +191,7 @@ describe("Utilities", () => {
       const result = testParentCandidate(
         data.element.needle,
         ".aaa",
-        data.root
+        data.root,
       );
       assert.isFalse(result);
     });
@@ -205,7 +204,7 @@ describe("Utilities", () => {
       const result = testParentCandidate(
         data.element.needle,
         ".aaa",
-        data.root
+        data.root,
       );
       assert.isTrue(result);
     });
@@ -216,7 +215,7 @@ describe("Utilities", () => {
       const result = testParentCandidate(
         data.element.needle,
         ".aaa",
-        data.root
+        data.root,
       );
       assert.isTrue(result);
     });
@@ -229,7 +228,7 @@ describe("Utilities", () => {
       const result = testParentCandidate(
         data.element.needle,
         ".aaa",
-        data.root
+        data.root,
       );
       assert.isFalse(result);
     });
@@ -246,8 +245,8 @@ describe("Utilities", () => {
       });
       const generator = needleCandidateGenerator(
         data.group.needle,
-        [CssSelectorType.class],
-        options
+        [CSS_SELECTOR_TYPE.class],
+        options,
       );
       const result = [...generator];
       assert.deepEqual(result, [".aaa", ".bbb", ".aaa.bbb"]);
@@ -262,93 +261,11 @@ describe("Utilities", () => {
       });
       const generator = needleCandidateGenerator(
         data.group.needle,
-        [CssSelectorType.class, CssSelectorType.id],
-        options
+        [CSS_SELECTOR_TYPE.class, CSS_SELECTOR_TYPE.id],
+        options,
       );
       const result = [...generator];
       assert.deepEqual(result, [".aaa", "#bbb", "#bbb.aaa"]);
-    });
-  });
-
-  describe.skip("cssSelectorGenerator", () => {
-    it("should generate selector directly on needle", () => {
-      const data = parseTestHtml(`
-        <div class="aaa"><!-- name: needle --></div>
-      `);
-      const generator = cssSelectorGenerator(data.element.needle, {
-        root: data.root,
-        selectors: ["class"],
-      });
-      const result = [...generator];
-      assert.equal(result[0], ".aaa");
-    });
-    it("should generate selector using combination of selector types", () => {
-      const data = parseTestHtml(`
-        <p class="aaa"><!-- name: needle --></p>
-        <div class="aaa"></div>
-      `);
-      const generator = cssSelectorGenerator(data.element.needle, {
-        root: data.root,
-        selectors: ["class", "tag"],
-      });
-      const result = [...generator];
-      assert.equal(result[0], "p.aaa");
-    });
-    it("should generate nested selector", () => {
-      const data = parseTestHtml(`
-        <div class="aaa">
-          <div class="aaa"><!-- name: needle --></div>
-        </div>
-      `);
-      const generator = cssSelectorGenerator(data.element.needle, {
-        root: data.root,
-        selectors: ["class"],
-      });
-      const result = [...generator];
-      assert.equal(result[0], ".aaa .aaa");
-    });
-    it("should generate deeply nested selector", () => {
-      const data = parseTestHtml(`
-        <div class="aaa bbb">
-          <div class="aaa bbb">
-            <div class="aaa bbb"><!-- name: needle --></div>
-            <div class="aaa"></div>
-            <div class="bbb"></div>
-          </div>
-          <div class="aaa">
-            <div class="aaa bbb"></div>
-            <div class="aaa"></div>
-            <div class="bbb"></div>
-          </div>
-          <div class="bbb">
-            <div class="aaa bbb"></div>
-            <div class="aaa"></div>
-            <div class="bbb"></div>
-          </div>
-          <div class="aaa bbb">
-            <div class="aaa"></div>
-            <div class="bbb"></div>
-          </div>
-        </div>
-      `);
-      const generator = cssSelectorGenerator(data.element.needle, {
-        root: data.root,
-        selectors: ["class"],
-      });
-      const result = [...generator];
-      assert.equal(result[0], ".aaa.bbb .aaa.bbb .aaa.bbb");
-    });
-    it("should generate selector with multiple needles", () => {
-      const data = parseTestHtml(`
-        <div class="aaa"><!-- group: needle --></div>
-        <div class="aaa"><!-- group: needle --></div>
-      `);
-      const generator = cssSelectorGenerator(data.group.needle, {
-        root: data.root,
-        selectors: ["class"],
-      });
-      const result = [...generator];
-      assert.equal(result[0], ".aaa");
     });
   });
 });

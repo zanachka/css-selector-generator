@@ -1,19 +1,20 @@
 import {
+  CSS_SELECTOR_TYPE,
   CssSelectorGenerated,
-  CssSelectorType,
   CssSelectorTypes,
   ElementData,
   ElementSelectorData,
   OPERATOR,
+  OperatorValue,
 } from "./types.js";
-import { OPERATOR_DATA, SELECTOR_PATTERN } from "./constants.js";
+import { SELECTOR_PATTERN } from "./constants.js";
 import { getElementSelectorsByType } from "./utilities-selectors.js";
 
 /**
  * Creates data describing a specific selector.
  */
 export function createElementSelectorData(
-  selector: CssSelectorGenerated
+  selector: CssSelectorGenerated,
 ): ElementSelectorData {
   return {
     value: selector,
@@ -27,7 +28,7 @@ export function createElementSelectorData(
 export function createElementData(
   element: Element,
   selectorTypes: CssSelectorTypes,
-  operator: OPERATOR = OPERATOR.NONE
+  operator: OperatorValue = OPERATOR.NONE,
 ): ElementData {
   const selectors = {};
   selectorTypes.forEach((selectorType) => {
@@ -35,13 +36,13 @@ export function createElementData(
       selectors,
       selectorType,
       getElementSelectorsByType(element, selectorType).map(
-        createElementSelectorData
-      )
+        createElementSelectorData,
+      ),
     );
   });
   return {
     element,
-    operator: OPERATOR_DATA[operator],
+    operator,
     selectors,
   };
 }
@@ -55,13 +56,16 @@ export function constructElementSelector({
 }: ElementData): CssSelectorGenerated {
   let pattern = [...SELECTOR_PATTERN];
   // `nthoftype` already contains tag
-  if (selectors[CssSelectorType.tag] && selectors[CssSelectorType.nthoftype]) {
-    pattern = pattern.filter((item) => item !== CssSelectorType.tag);
+  if (
+    selectors[CSS_SELECTOR_TYPE.tag] &&
+    selectors[CSS_SELECTOR_TYPE.nthoftype]
+  ) {
+    pattern = pattern.filter((item) => item !== CSS_SELECTOR_TYPE.tag);
   }
 
   let selector = "";
   pattern.forEach((selectorType) => {
-    const selectorsOfType = selectors[selectorType] || [];
+    const selectorsOfType = selectors[selectorType] ?? [];
     selectorsOfType.forEach(({ value, include }) => {
       if (include) {
         selector += value;
@@ -69,5 +73,5 @@ export function constructElementSelector({
     });
   });
 
-  return (operator.value + selector) as CssSelectorGenerated;
+  return (operator + selector) as CssSelectorGenerated;
 }

@@ -7,9 +7,9 @@ import { CssSelectorGenerated } from "./types.js";
  * Get ID selector for an element.
  * */
 export function getElementIdSelectors(
-  element: Element
+  element: Element,
 ): CssSelectorGenerated[] {
-  const id = element.getAttribute("id") || "";
+  const id = element.getAttribute("id") ?? "";
   const selector = `#${sanitizeSelectorItem(id)}` as CssSelectorGenerated;
   const rootNode = element.getRootNode({ composed: false });
   return !INVALID_ID_RE.test(id) && testSelector([element], selector, rootNode)

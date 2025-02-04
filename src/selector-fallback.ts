@@ -1,6 +1,6 @@
 import { getElementParents } from "./utilities-dom.js";
 import { SELECTOR_SEPARATOR } from "./constants.js";
-import { CssSelector, CssSelectorType, OPERATOR } from "./types.js";
+import { CSS_SELECTOR_TYPE, CssSelector, OPERATOR } from "./types.js";
 import {
   constructElementSelector,
   createElementData,
@@ -14,8 +14,8 @@ export function getElementFallbackSelector(element: Element): CssSelector {
   const elementsData = parentElements.map((element) => {
     const elementData = createElementData(
       element,
-      [CssSelectorType.nthchild],
-      OPERATOR.DESCENDANT
+      [CSS_SELECTOR_TYPE.nthchild],
+      OPERATOR.CHILD,
     );
     elementData.selectors.nthchild.forEach((selectorData) => {
       selectorData.include = true;

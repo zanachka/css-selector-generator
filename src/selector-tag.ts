@@ -6,7 +6,7 @@ import { flattenArray } from "./utilities-data.js";
  * Get tag selector for an element.
  */
 export function getElementTagSelectors(
-  element: Element
+  element: Element,
 ): CssSelectorGenerated[] {
   return [
     sanitizeSelectorItem(element.tagName.toLowerCase()) as CssSelectorGenerated,
@@ -16,7 +16,7 @@ export function getElementTagSelectors(
 /**
  * Get tag selector for list of elements.
  */
-export function getTagSelector(elements: Element[]): Array<CssSelector> {
+export function getTagSelector(elements: Element[]): CssSelector[] {
   const selectors = [
     ...new Set(flattenArray(elements.map(getElementTagSelectors))),
   ];

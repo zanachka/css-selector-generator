@@ -1,8 +1,4 @@
-import {
-  CHILD_OPERATOR,
-  DESCENDANT_OPERATOR,
-  SELECTOR_PATTERN,
-} from "./constants.js";
+import { SELECTOR_PATTERN } from "./constants.js";
 import {
   getAttributeSelectors,
   getElementAttributeSelectors,
@@ -24,6 +20,7 @@ import { getElementTagSelectors, getTagSelector } from "./selector-tag.js";
 import { createPatternMatcher, flattenArray } from "./utilities-data.js";
 import { getParents, testSelector } from "./utilities-dom.js";
 import {
+  CSS_SELECTOR_TYPE,
   CssSelector,
   CssSelectorData,
   CssSelectorGenerated,
@@ -31,6 +28,7 @@ import {
   CssSelectorType,
   CssSelectorTypes,
   IdentifiableParent,
+  OPERATOR,
   PatternMatcher,
 } from "./types.js";
 import { isElement } from "./utilities-iselement.js";
@@ -47,7 +45,9 @@ export const SPECIAL_CHARACTERS_RE = /[ !"#$%&'()\[\]{|}<>*+,./;=?@^`~\\]/;
  * Escapes special characters used by CSS selector items.
  */
 export function sanitizeSelectorItem(input = ""): string {
-  return CSS?.escape?.(input) ?? legacySanitizeSelectorItem(input);
+  // This should not be necessary, but just to be sure, let's keep the legacy sanitizer in place, for backwards compatibility.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  return CSS ? CSS.escape(input) : legacySanitizeSelectorItem(input);
 }
 
 /**
@@ -65,35 +65,44 @@ export function legacySanitizeSelectorItem(input = ""): string {
       if (SPECIAL_CHARACTERS_RE.test(character)) {
         return `\\${character}`;
       }
+
+      // needed for backwards compatibility
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       return escape(character).replace(/%/g, "\\");
     })
     .join("");
 }
 
-export const SELECTOR_TYPE_GETTERS = {
+export const SELECTOR_TYPE_GETTERS: Record<
+  CssSelectorType,
+  (elements: Element[]) => CssSelector[]
+> = {
   tag: getTagSelector,
   id: getIdSelector,
   class: getClassSelectors,
   attribute: getAttributeSelectors,
   nthchild: getNthChildSelector,
   nthoftype: getNthOfTypeSelector,
-};
+} as const;
 
-export const ELEMENT_SELECTOR_TYPE_GETTERS = {
+export const ELEMENT_SELECTOR_TYPE_GETTERS: Record<
+  CssSelectorType,
+  (element: Element) => CssSelectorGenerated[]
+> = {
   tag: getElementTagSelectors,
   id: getElementIdSelectors,
   class: getElementClassSelectors,
   attribute: getElementAttributeSelectors,
   nthchild: getElementNthChildSelector,
   nthoftype: getElementNthOfTypeSelector,
-};
+} as const;
 
 /**
  * Creates selector of given type for single element.
  */
 export function getElementSelectorsByType(
   element: Element,
-  selectorType: CssSelectorType
+  selectorType: CssSelectorType,
 ): CssSelectorGenerated[] {
   return ELEMENT_SELECTOR_TYPE_GETTERS[selectorType](element);
 }
@@ -103,10 +112,9 @@ export function getElementSelectorsByType(
  */
 export function getSelectorsByType(
   elements: Element[],
-  selector_type: CssSelectorType
-): Array<CssSelector> {
-  const getter =
-    SELECTOR_TYPE_GETTERS[selector_type] ?? ((): Array<CssSelector> => []);
+  selector_type: CssSelectorType,
+): CssSelector[] {
+  const getter = SELECTOR_TYPE_GETTERS[selector_type];
   return getter(elements);
 }
 
@@ -114,10 +122,10 @@ export function getSelectorsByType(
  * Remove blacklisted selectors from list.
  */
 export function filterSelectors(
-  list: Array<CssSelector> = [],
+  list: CssSelector[] = [],
   matchBlacklist: PatternMatcher,
-  matchWhitelist: PatternMatcher
-): Array<CssSelector> {
+  matchWhitelist: PatternMatcher,
+): CssSelector[] {
   return list.filter((item) => matchWhitelist(item) || !matchBlacklist(item));
 }
 
@@ -125,9 +133,9 @@ export function filterSelectors(
  * Prioritise whitelisted selectors in list.
  */
 export function orderSelectors(
-  list: Array<CssSelector> = [],
-  matchWhitelist: PatternMatcher
-): Array<CssSelector> {
+  list: CssSelector[] = [],
+  matchWhitelist: PatternMatcher,
+): CssSelector[] {
   return list.sort((a, b) => {
     const a_is_whitelisted = matchWhitelist(a);
     const b_is_whitelisted = matchWhitelist(b);
@@ -147,8 +155,8 @@ export function orderSelectors(
 export function getAllSelectors(
   elements: Element[],
   root: ParentNode,
-  options: CssSelectorGeneratorOptions
-): Array<CssSelector> {
+  options: CssSelectorGeneratorOptions,
+): CssSelector[] {
   const selectors_list = getSelectorsList(elements, options);
   const type_combinations = getTypeCombinations(selectors_list, options);
   const all_selectors = flattenArray(type_combinations);
@@ -160,7 +168,7 @@ export function getAllSelectors(
  */
 export function getSelectorsList(
   elements: Element[],
-  options: CssSelectorGeneratorOptions
+  options: CssSelectorGeneratorOptions,
 ): CssSelectorData {
   const { blacklist, whitelist, combineWithinSelector, maxCombinations } =
     options;
@@ -173,7 +181,7 @@ export function getSelectorsList(
     const filtered_selectors = filterSelectors(
       selectors_by_type,
       matchBlacklist,
-      matchWhitelist
+      matchWhitelist,
     );
     const found_selectors = orderSelectors(filtered_selectors, matchWhitelist);
 
@@ -191,11 +199,11 @@ export function getSelectorsList(
  * Creates list of selector types that we will need to generate the selector.
  */
 export function getSelectorsToGet(
-  options: CssSelectorGeneratorOptions
+  options: CssSelectorGeneratorOptions,
 ): CssSelectorTypes {
   const { selectors, includeTag } = options;
 
-  const selectors_to_get = [].concat(selectors);
+  const selectors_to_get = [...selectors];
   if (includeTag && !selectors_to_get.includes("tag")) {
     selectors_to_get.push("tag");
   }
@@ -208,18 +216,18 @@ export function getSelectorsToGet(
  * TAG part.
  */
 function addTagTypeIfNeeded(list: CssSelectorTypes): CssSelectorTypes {
-  return list.includes(CssSelectorType.tag) ||
-    list.includes(CssSelectorType.nthoftype)
+  return list.includes(CSS_SELECTOR_TYPE.tag) ||
+    list.includes(CSS_SELECTOR_TYPE.nthoftype)
     ? [...list]
-    : [...list, CssSelectorType.tag];
+    : [...list, CSS_SELECTOR_TYPE.tag];
 }
 
 /**
  * Generates list of possible selector type combinations.
  */
 export function combineSelectorTypes(
-  options: CssSelectorGeneratorOptions
-): Array<CssSelectorTypes> {
+  options: CssSelectorGeneratorOptions,
+): CssSelectorTypes[] {
   const { selectors, combineBetweenSelectors, includeTag, maxCandidates } =
     options;
 
@@ -235,8 +243,8 @@ export function combineSelectorTypes(
  */
 export function getTypeCombinations(
   selectors_list: CssSelectorData,
-  options: CssSelectorGeneratorOptions
-): Array<Array<CssSelector>> {
+  options: CssSelectorGeneratorOptions,
+): CssSelector[][] {
   return combineSelectorTypes(options)
     .map((item) => {
       return constructSelectors(item, selectors_list);
@@ -249,12 +257,12 @@ export function getTypeCombinations(
  */
 export function constructSelectors(
   selector_types: CssSelectorTypes,
-  selectors_by_type: CssSelectorData
-): Array<CssSelector> {
+  selectors_by_type: CssSelectorData,
+): CssSelector[] {
   const data: CssSelectorData = {};
   selector_types.forEach((selector_type) => {
     const selector_variants = selectors_by_type[selector_type];
-    if (selector_variants.length > 0) {
+    if (selector_variants && selector_variants.length > 0) {
       data[selector_type] = selector_variants;
     }
   });
@@ -268,7 +276,7 @@ export function constructSelectors(
  */
 export function constructSelectorType(
   selector_type: CssSelectorType,
-  selectors_data: CssSelectorData
+  selectors_data: CssSelectorData,
 ): CssSelector {
   return selectors_data[selector_type]
     ? selectors_data[selector_type].join("")
@@ -279,15 +287,15 @@ export function constructSelectorType(
  * Converts selector data object to a selector.
  */
 export function constructSelector(
-  selectorData: CssSelectorData = {}
+  selectorData: CssSelectorData = {},
 ): CssSelector {
   const pattern = [...SELECTOR_PATTERN];
   // selector "nthoftype" already contains "tag"
   if (
-    selectorData[CssSelectorType.tag] &&
-    selectorData[CssSelectorType.nthoftype]
+    selectorData[CSS_SELECTOR_TYPE.tag] &&
+    selectorData[CSS_SELECTOR_TYPE.nthoftype]
   ) {
-    pattern.splice(pattern.indexOf(CssSelectorType.tag), 1);
+    pattern.splice(pattern.indexOf(CSS_SELECTOR_TYPE.tag), 1);
   }
 
   return pattern
@@ -301,13 +309,13 @@ export function constructSelector(
  */
 function generateCandidateCombinations(
   selectors: CssSelector[],
-  rootSelector: CssSelector
+  rootSelector: CssSelector,
 ): CssSelector[] {
   return [
-    ...selectors.map((selector) => rootSelector + CHILD_OPERATOR + selector),
     ...selectors.map(
-      (selector) => rootSelector + DESCENDANT_OPERATOR + selector
+      (selector) => rootSelector + OPERATOR.DESCENDANT + selector,
     ),
+    ...selectors.map((selector) => rootSelector + OPERATOR.CHILD + selector),
   ];
 }
 
@@ -317,7 +325,7 @@ function generateCandidateCombinations(
  */
 function generateCandidates(
   selectors: CssSelector[],
-  rootSelector: CssSelector
+  rootSelector: CssSelector,
 ): CssSelector[] {
   return rootSelector === ""
     ? selectors
@@ -325,18 +333,18 @@ function generateCandidates(
 }
 
 /**
- * Tries to find an unique CSS selector for element within given parent.
+ * Tries to find a unique CSS selector for element within given parent.
  */
 export function getSelectorWithinRoot(
   elements: Element[],
   root: ParentNode,
   rootSelector: CssSelector = "",
-  options: CssSelectorGeneratorOptions
+  options: CssSelectorGeneratorOptions,
 ): null | CssSelector {
-  const elementSelectors = getAllSelectors(elements, options.root, options);
+  const elementSelectors = getAllSelectors(elements, root, options);
   const selectorCandidates = generateCandidates(elementSelectors, rootSelector);
   for (const candidateSelector of selectorCandidates) {
-    if (testSelector(elements, candidateSelector, options.root)) {
+    if (testSelector(elements, candidateSelector, root)) {
       return candidateSelector;
     }
   }
@@ -351,7 +359,7 @@ export function getClosestIdentifiableParent(
   elements: Element[],
   root: ParentNode,
   rootSelector: CssSelector = "",
-  options: CssSelectorGeneratorOptions
+  options: CssSelectorGeneratorOptions,
 ): IdentifiableParent {
   if (elements.length === 0) {
     return null;
@@ -367,7 +375,7 @@ export function getClosestIdentifiableParent(
       currentElements,
       root,
       rootSelector,
-      options
+      options,
     );
     if (result) {
       return {
@@ -388,7 +396,7 @@ export function sanitizeSelectorNeedle(needle: unknown): Element[] {
     needle = Array.from(needle);
   }
   const elements = (Array.isArray(needle) ? needle : [needle]).filter(
-    isElement
+    isElement,
   );
   return [...new Set(elements)];
 }

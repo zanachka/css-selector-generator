@@ -1,27 +1,23 @@
 declare const opaqueId: unique symbol;
 
-declare type Tagged<Token> = {
+declare interface Tagged<Token> {
   readonly [opaqueId]: Token;
-};
+}
 
 export type Opaque<Type, Token = unknown> = Type & Tagged<Token>;
+
+export type ObjectValues<T> = T[keyof T];
 
 // TODO rename to "CssSelector"
 export type CssSelectorGenerated = Opaque<string, "CssSelector">;
 
-export enum OPERATOR {
-  NONE = "none",
-  DESCENDANT = "descendant",
-  CHILD = "child",
-}
+export const OPERATOR = {
+  NONE: "",
+  DESCENDANT: " ",
+  CHILD: " > ",
+} as const;
 
-export type OperatorValue = "" | " " | " > ";
-
-export interface OperatorData {
-  type: OPERATOR;
-  // TODO use constants
-  value: OperatorValue;
-}
+export type OperatorValue = ObjectValues<typeof OPERATOR>;
 
 export interface ElementSelectorData {
   value: CssSelectorGenerated;
@@ -30,45 +26,41 @@ export interface ElementSelectorData {
 
 export interface ElementData {
   element: Element;
-  operator: OperatorData;
+  operator: OperatorValue;
   selectors: Partial<Record<CssSelectorType, ElementSelectorData[]>>;
 }
 
-export interface SelectorData {
-  isFallback: boolean;
-  elements: ElementData[];
-}
-
 export type CssSelector = string;
-export type CssSelectors = Array<CssSelector>;
+export type CssSelectors = CssSelector[];
 
 type CssSelectorMatchFn = (input: string) => boolean;
 export type CssSelectorMatch = RegExp | string | CssSelectorMatchFn;
 
-export enum CssSelectorType {
-  id = "id",
-  class = "class",
-  tag = "tag",
-  attribute = "attribute",
-  nthchild = "nthchild",
-  nthoftype = "nthoftype",
-}
+export const CSS_SELECTOR_TYPE = {
+  id: "id",
+  class: "class",
+  tag: "tag",
+  attribute: "attribute",
+  nthchild: "nthchild",
+  nthoftype: "nthoftype",
+} as const;
 
-export type CssSelectorTypes = Array<CssSelectorType>;
+export type CssSelectorType = ObjectValues<typeof CSS_SELECTOR_TYPE>;
+export type CssSelectorTypes = CssSelectorType[];
 
 export type CssSelectorsByType = Partial<Record<CssSelectorType, CssSelectors>>;
 
-export type CssSelectorData = {
-  [key in CssSelectorType]?: Array<string> | Array<Array<string>>;
-};
+export type CssSelectorData = Partial<
+  Record<CssSelectorType, string[] | string[][]>
+>;
 
 export type CssSelectorGeneratorOptionsInput = Partial<{
   // List of selector types to use. They will be prioritised by their order.
-  selectors: (keyof typeof CssSelectorType)[];
+  selectors: CssSelectorTypes;
   // List of selectors that should be prioritised.
-  whitelist: Array<CssSelectorMatch>;
+  whitelist: CssSelectorMatch[];
   // List of selectors that should be ignored.
-  blacklist: Array<CssSelectorMatch>;
+  blacklist: CssSelectorMatch[];
   // Root element inside which the selector will be generated. If not set, the document root will be used.
   root: ParentNode | null;
   // If set to `true`, the generator will test combinations of selectors of single type (e.g. multiple class selectors).

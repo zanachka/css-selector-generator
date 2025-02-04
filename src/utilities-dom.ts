@@ -9,10 +9,10 @@ import { sanitizeRoot } from "./utilities-options.js";
 export function testSelector(
   elements: Element[],
   selector: CssSelector,
-  root?: Node
+  root?: Node,
 ): boolean {
   const result = Array.from(
-    sanitizeRoot(root, elements[0]).querySelectorAll(selector)
+    sanitizeRoot(root, elements[0]).querySelectorAll(selector),
   );
   return (
     result.length === elements.length &&
@@ -26,10 +26,10 @@ export function testSelector(
 export function testMultiSelector(
   element: Element,
   selector: CssSelector,
-  root: ParentNode
+  root: ParentNode,
 ): boolean {
   const result = Array.from(
-    sanitizeRoot(root, element).querySelectorAll(selector)
+    sanitizeRoot(root, element).querySelectorAll(selector),
   );
   return result.includes(element);
 }
@@ -39,11 +39,11 @@ export function testMultiSelector(
  */
 export function getElementParents(
   element: Element,
-  root?: ParentNode
+  root?: ParentNode,
 ): Element[] {
   root = root ?? getRootNode(element);
   const result = [];
-  let parent = element;
+  let parent: Element | null = element;
   while (isElement(parent) && parent !== root) {
     result.push(parent);
     parent = parent.parentElement;
@@ -56,7 +56,7 @@ export function getElementParents(
  */
 export function getParents(elements: Element[], root?: ParentNode): Element[] {
   return getIntersection(
-    elements.map((element) => getElementParents(element, root))
+    elements.map((element) => getElementParents(element, root)),
   );
 }
 
@@ -64,5 +64,6 @@ export function getParents(elements: Element[], root?: ParentNode): Element[] {
  * Returns root node for given element. This needs to be used because of document-less environments, e.g. jsdom.
  */
 export function getRootNode(element: Element): ParentNode {
+  // The `:root` selector always returns a parent node. The `null` return value is not applicable here.
   return element.ownerDocument.querySelector(":root");
 }
